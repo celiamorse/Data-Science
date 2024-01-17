@@ -1,0 +1,245 @@
+---
+title: "Final Project Plan and Data Source Proposal <br>
+& Final Project Report and Presentation"
+output: 
+   html_document:
+     theme: "yeti"
+     toc: true
+     toc_float: true
+---
+
+***
+
+---
+title: "Final Project Plan and Data Source Proposal"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+## Exploring the Relationship Between Climate Variables and Weather Forecast Accuracy in States of the US
+
+Team members: 
+
+- Student 1: [Celia Morse](mailto:`celia.morse@simmons.edu`)
+
+The world's climate has been changing rapidly over the last few decades, causing significant concerns for both scientists and the general public. To better understand the impact of these changes, we need to analyze large amounts of climate-related data. The raw data for this project is sourced from the National Oceanic and Atmospheric Administration (NOAA). The dataset includes information on the daily temperature, precipitation, and wind for various cities across the United States, as well as the forecasted values for these variables. Other variables included in the dataset are the elevation of each city, the distance to the coast, and the elevation change over four and eight kilometers.
+
+The goal of this project is to conduct an exploratory data analysis of the NOAA dataset to gain insights into the relationships between these variables. This analysis can provide us with a better understanding of how different factors such as location, elevation, and weather patterns affect the climate of different regions of the United States. By identifying these relationships, we can develop a better understanding of how the changing climate affects different regions and prepare for potential impacts.
+
+It is important to note that the data source may have limitations or biases that could affect the analysis, such as missing data, variations in data quality across different cities, and differences in the accuracy of forecasts over time. However, the data set provides a valuable resource for analyzing climate patterns and exploring the relationships between different variables that can impact climate conditions across the United States.
+
+It was a struggle to come up with a good story to tell, but it was important for me to keep going with this because the world's climate has been changing rapidly over the last few decades, causing significant concerns for both scientists and the general public. To better understand the impact of these changes, we need to analyze large amounts of climate-related data. The raw data for this project was sourced from the National Oceanic and Atmospheric Administration (NOAA) by a group of students from IL. 
+
+The goal of this project is to conduct an exploratory data analysis of the NOAA dataset to gain insights into the relationships between certain climate variables. An analysis on this can provide us with a better understanding of how different factors such as location, elevation, and weather patterns affect the climate of different regions of the United States. By identifying these relationships, we can develop a better understanding of how the changing climate affects different regions and prepare for potential impact.
+
+First, I loaded the data into R using the read_csv function. The data consists of two different sets, one containing different forecasts of weather, and the other containing elements of cities in different regions of the U.S. Lastly, I merged the two data sets together using the left_join function, and I saved it in a data frame called "forecast_and_cities". The data set contained many n/a values, so I decided to remove them as a whole row. Removing whole rows could be a potentially dangerous idea, as it could vastly affect the accuracy of your results, but the data set was large enough to do this without risking the results. 
+
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+
+```
+
+```{r warning=FALSE}
+original_forecast<-read_csv("data/forecast.csv")
+
+```
+
+```{r}
+original_cities <- read_csv("data/cities.csv")
+
+```
+
+
+```{r}
+forecast_and_cities <- left_join(original_forecast, original_cities, by=join_by(city, state))
+
+```
+
+```{r}
+forecast_and_cities<-na.omit(forecast_and_cities)
+
+```
+
+```{r}
+
+forecast_and_cities
+```
+
+
+|Column name|Description|
+|-----------|-----------|
+|Date | Date described by the forecast and observation|
+|State | State |
+|Observed_temp| the actual temperature on that date |
+|Forecast_temp| the predicted temp on that date |
+|Observed_precip| the observed precipitation on that date, in inches|
+|Forecast_outlook| an abbreviation for the generall outlook |
+|Possible_error | either "none" or the name of the variable causing potential error|
+|Elevation | elevation in meters |
+|Distance_to_coast | distance to coast, in miles |
+|Wind | mean wind speed | 
+|Elevation_change_four|greatest elevation change in meters out of the four closest points to this city |
+|Elevation_change_eight|greatest elevation change in meters out of the eight closest points to this city |
+|Avg_annual_precip | average annual precipitation in inches |
+
+
+The data includes 16 months of forecasts and observations from 167 cities along with several variables that describe the weather conditions for a particular location on a given day. These variables include the date, state, observed temperature, forecast temperature, observed precipitation, forecast outlook, possible error, elevation, distance to coast, mean wind speed, greatest elevation change out of the four closest points, greatest elevation change out of the eight closest points, and average annual precipitation.
+
+I started off trying to fit a linear regression model to the data, but unfortunately it failed the Breusch-Pagan test. Linear regression was not a good choice because the residuals do not have constant variance. 
+
+
+We really don't know how NOAA predicted temperature, but it seems like they did a pretty good job given the temperature differences are super small between predicted and observed, which you can see from this visualization:
+
+```{r}
+ggplot(forecast_and_cities, aes(x = forecast_temp, y = observed_temp)) +
+  geom_point(alpha = 0.1) +
+  geom_abline(color = "red") +
+  labs(x='Forecasted Temp (deg F)', y='Actual Temp (deg F)', title='NOAA did a good job predicting the temperature ', caption='Data Sourced From: NOAA by Shreyas Bhavanasi, Harrison Lanier, Lauren Schmiedeler, and Clayton Strauch')
+
+```
+
+
+After kindof struggling to develop a good story to tell, I ultimately decided to try and investigate how accurate weather forecasts are for states in different regions of the US. 
+
+The first step in how I tried to do this was to calculate two statistical measures: the Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) for each state.
+
+The MAE tells us on average how far off the weather forecasts are from the actual values. This means that if the MAE is small, it indicates that the forecasts are generally close to the actual values.
+On the other hand, the RMSE measures the deviation of the predictions from the actual values. This means that if the RMSE is small, it indicates that the forecast errors tend to be small as well.
+In my study, I chose to use the MAE because it is a more easily interpretable metric and provides a better sense of the average magnitude of errors. 
+
+Essentially, the MAE tells us how far off the forecasts are from the actual values on average, which is an important metric for evaluating the accuracy of weather forecasts.
+To calculate the MAE, I took the difference between the predicted values and the actual values for each data point, and then took the average of these differences. In this case, I used observed_temp and forecasted_temp.
+
+
+
+
+```{r}
+forecast_data <- forecast_and_cities %>% 
+  group_by( state) %>% 
+  mutate(temp_error = abs(forecast_temp - observed_temp))
+
+forecast_data %>% 
+  select(observed_temp, forecast_temp, temp_error)
+   
+```
+
+
+
+
+```{r}
+mae <- forecast_data %>% 
+  group_by( state) %>% 
+  summarize(avg_temp_mae = mean(temp_error),
+            temp_rmse = sqrt(mean(temp_error^2)))
+
+mae
+
+
+```
+```{r}
+largest <- mae %>% 
+  top_n(1, avg_temp_mae)
+largest
+
+```
+
+```{r}
+smallest_mae <- mae %>% 
+  top_n(1, desc(avg_temp_mae))
+smallest_mae
+```
+
+
+
+
+MT, on average, had predictions further off from the observed temp. FL, on average, had predictions closest to the observed temp. 
+
+Lets take a look at some of the geographical features of MT and FL. While investigating this data set, I found a stepAIC that had been modeled to determine the most significant predictors of forecast error.The test was split into a 80/20 train/test and repeated 50 times. In conclusion of this, distance to coast was the most important features for predicting temperature forecast errors. Florida is a coastal state, so this could explain its low MAE. Montana, however, is a landlocked state, so this could resonably explain its high MAE. 
+
+I then subsetted the data by using the filter function in dplyr to only include observations from Florida and Montana and found that Florida had a lower MAE compared to Montana.
+FL and MT are very different geographically. Now, how can I further this investigation?
+
+
+I looked at the mean temperature prediction error based on distance to the coast for both states. I found that the inland state, Montana, had a higher mean temperature prediction error compared to the coastal state, Florida. These results suggest that inland regions may be more challenging to predict accurately.
+
+```{r}
+fl_mt <- forecast_data %>% 
+  filter(state %in% c("FL", "MT"))
+
+
+
+```
+
+
+```{r}
+
+coastal_inland <- fl_mt %>% 
+  mutate(is_coastal = ifelse(distance_to_coast <= 50, "coastal", "inland")) %>% 
+  group_by(state, is_coastal) %>% 
+  summarize(mean_temp_error = mean(temp_error), .groups = "drop")
+
+# Visualize the results
+ggplot(coastal_inland, aes(x = is_coastal, y = mean_temp_error, fill = state)) +
+  geom_col() +
+  labs(x = "Distance to coast", y = "Mean temperature prediction error", title = 'Inland state, Montana, has a higher mean temperature prediction error compared to the coastal state', caption = 'Data Sourced From: NOAA by Shreyas Bhavanasi, Harrison Lanier, Lauren Schmiedeler, and Clayton Strauch' ) +
+  theme(plot.title = element_text(size = 10))+
+  scale_fill_discrete(name = "State")
+
+```
+
+
+There could be several possible explanations for this result:
+
+Coastal areas generally experience more consistent weather patterns and have smaller temperature variations compared to inland regions. This could make it easier for temperature prediction models to accurately forecast temperatures in coastal regions.
+Coastal regions are more likely to be influenced by ocean currents, which can moderate the temperature and create a more stable climate. This may make it easier to forecast temperatures accurately in coastal areas compared to inland regions, where temperature variations can be larger and more unpredictable.
+Coastal areas may have more weather monitoring stations compared to inland regions. This could result in more accurate and detailed weather data being available for coastal regions, which can be used to improve temperature prediction models.
+
+
+
+In conclusion, the results suggest that distance to the coast is an important factor to consider when predicting temperature forecast errors, and MAE is a useful metric for evaluating the accuracy of weather forecasts. This dataset can be further analyzed to gain better insights and understanding of the data it contains. 
+
+
+It's essential to note that the relationship between coastal proximity and forecast errors is not absolute. Other factors, such as local topography, elevation, wind patterns, and regional characteristics, can also influence temperature forecasts. Additionally, the accuracy of forecasts depends on various elements, including data quality, the sophistication of the forecasting model, real-time observations, and the expertise of meteorologists.
+
+To improve the analysis, some considerations should be taken into account. Conducting a comparative analysis of different forecasting models and techniques would allow for a more substantial evaluation of the impact of coastal proximity on forecast accuracy.
+
+If starting over with this project or continuing the research, further investigation could be conducted to explore the specific mechanisms and factors behind the influence of coastal proximity on temperature forecasts. This could involve studying the role of ocean currents, sea surface temperatures, and wind patterns in shaping temperature patterns along the coast. Additionally, incorporating other geographical features, such as land cover or topography, into the analysis could provide a more comprehensive understanding of the factors contributing to temperature forecast errors.
+
+Furthermore, expanding the study to include other meteorological variables, such as humidity or precipitation, would provide a broader perspective on the impact of coastal proximity on overall weather forecasting accuracy. Such research could help refine existing forecasting models and improve the precision of weather forecasts, particularly in regions where coastal influences play a significant role in shaping the local climate.
+
+In conclusion, the distance to the coast is indeed an important feature for predicting temperature forecast errors. Incorporating this feature in temperature forecasting models can help enhance forecast accuracy, particularly in coastal regions where the moderating effect of nearby bodies of water influences temperature patterns. However, further research and analysis are necessary to fully understand the complexities and nuances of this relationship and to refine forecasting models accordingly.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
